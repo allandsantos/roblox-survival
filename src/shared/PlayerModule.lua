@@ -3,9 +3,15 @@ local PlayerModule = {}
 -- SERVICES
 local players = game:GetService("Players")
 local dataStoreService = game:GetService("DataStoreService")
-local serverStorage = game:GetService("ServerStorage")
-local playerLoadedBindableEvent: BindableEvent = serverStorage.BindableEvents.PlayerLoaded
-local playerUnloadedBindableEvent: BindableEvent = serverStorage.BindableEvents.PlayerUnloaded
+local ServerStorage = game:GetService("ServerStorage")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local playerLoadedBindableEvent: BindableEvent = ServerStorage.BindableEvents.PlayerLoaded
+local playerUnloadedBindableEvent: BindableEvent = ServerStorage.BindableEvents.PlayerUnloaded
+
+local OnPlayerHungerUpdated: RemoteEvent = ReplicatedStorage.RemoteEvents.PlayerHungerUpdated
+local OnPlayerInventoryUpdated: RemoteEvent = ReplicatedStorage.RemoteEvents.PlayerInventoryUpdated
+local OnPlayerLevelUp: RemoteEvent = ReplicatedStorage.RemoteEvents.PlayerLevelUp
 
 -- CONSTANTS
 local PLAYER_DEFAULT_DATA = {
@@ -63,16 +69,42 @@ function PlayerModule.DecrementHunger(player: Player, hunger: number): number
 	playersOnline[player.UserId].hunger = NormalizeHungerValue(playerHunger - hunger)
 end
 
+function PlayerModule.AddToInventory(player: Player, key: string, value: number)
+	local inventory = playersOnline[player.UserId].inventory
+	if not inventory[key] then
+		inventory[key] = 0
+	end
+
+	inventory[key] += value
+end
+
+function PlayerModule.GetInventory(player: Player)
+	return playersOnline[player.UserId].inventory
+end
+
+function PlayerModule.GetLevel(player: Player)
+	return playersOnline[player.UserId].level
+end
+
+function PlayerModule.SetLevel(player: Player, level: number)
+	playersOnline[player.UserId].level = level
+end
+
 local function OnPlayerAdded(player: Player)
 	player.CharacterAdded:Connect(function(_)
-		playerLoadedBindableEvent:Fire(player)
 		local data = database:GetAsync(player.UserId)
-		-- if not data then
-		data = PLAYER_DEFAULT_DATA
-		-- end
+		if not data then
+			data = PLAYER_DEFAULT_DATA
+		end
 
+		data.level = 1
+		data.hunger = data.hunger > 0 and data.hunger or 100
 		playersOnline[player.UserId] = data
-		print(playersOnline[player.UserId])
+
+		playerLoadedBindableEvent:Fire(player)
+		OnPlayerHungerUpdated:FireClient(player, data.hunger)
+		OnPlayerInventoryUpdated:FireClient(player, data.inventory)
+		OnPlayerLevelUp:FireClient(player, data.level)
 	end)
 end
 

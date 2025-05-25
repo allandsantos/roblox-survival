@@ -7,7 +7,7 @@ local OnPlayerHungerUpdated: RemoteEvent = ReplicatedStorage.RemoteEvents.Player
 
 -- CONSTANTS
 local CORE_LOOP_INTERVAL = 1
-local HUNGER_DECREMENT = 10
+local HUNGER_DECREMENT = 1
 
 OnPlayerLoadedEvent:Connect(function(player: Player)
 	task.spawn(function()
